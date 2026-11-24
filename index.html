@@ -36,6 +36,11 @@ input { width:100%; border:1px solid #a9b9b3; border-radius:12px; padding:15px; 
 [hidden] { display:none !important; }
 @media(max-width:480px) { .choices { grid-template-columns:1fr; gap:12px; margin-top:24px; } .choice { padding:18px; } .choice span { font-size:32px; } }
 @media(prefers-reduced-motion:reduce) { button { transition:none; } }
+
+main.editing { width:min(100%,900px); text-align:left; }
+.panel { border:1px solid #dce8e1; background:#f8fbf9; padding:20px; border-radius:18px; margin:16px 0; }
+.panel h3 { margin:0 0 12px; } textarea,select { font:inherit; width:100%; padding:12px; border:1px solid #a9b9b3; border-radius:12px; background:white; } textarea { resize:vertical; min-height:85px; }
+.toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; } .answer-row { display:flex; align-items:center; gap:8px; margin:8px 0; } .answer-row input[type=checkbox], .answer-row input[type=radio] { width:24px; height:24px; flex:none; } .answer-row input[type=text] { min-width:0; } .answer-row button { flex:none; padding:8px 12px; } .muted { font-size:14px; color:#526660; } .danger { background:#fee9e6; color:#a22; } .status { color:#205c48; font-weight:700; } .sticky { position:sticky; bottom:0; background:#fff; padding:12px 0; border-top:1px solid #dce8e1; } .sticky button { flex:1; } .editing footer { text-align:center; } @media(max-width:480px){body{padding:12px}.panel{padding:12px}.editing{padding:16px}.toolbar button{font-size:14px}}
 </style>
 </head>
 <body>
@@ -49,10 +54,17 @@ input { width:100%; border:1px solid #a9b9b3; border-radius:12px; padding:15px; 
 <button class="choice student" id="studentButton"><span aria-hidden="true">🎮</span>학생용<small>퀴즈 도전하기</small></button>
 </div>
 </section>
+<section id="editor" hidden>
+<div class="toolbar"><h1>👩‍🏫 관리자 모드</h1><button class="secondary" id="adminHome">첫 화면</button></div>
+<div class="panel"><h3>🔐 학생용 입장 비밀번호</h3><label for="studentPass">학생에게 안내할 비밀번호</label><input id="studentPass" type="text" autocomplete="off" placeholder="비밀번호 설정"><div class="actions"><button class="primary" id="savePass">비밀번호 저장</button></div><p id="passStatus" class="status" role="status"></p></div>
+<div class="toolbar"><h2>📝 문제 등록 <span id="count"></span></h2><button class="admin" id="addQuestion">+ 문제 추가</button></div>
+<p class="muted">객관식은 정답 1개, 다지선다는 정답 여러 개를 선택할 수 있습니다. 단답형은 인정할 정답을 여러 개 등록할 수 있습니다.</p>
+<div id="questions"></div><div class="actions sticky"><button class="admin" id="addBottom">+ 문제 추가</button><button class="primary" id="saveQuestions">문제 저장</button></div><p id="saveStatus" class="status" role="status"></p>
+</section>
 <section id="welcome" hidden>
 <div class="illustration" aria-hidden="true" id="welcomeIcon"></div>
 <h1 id="welcomeTitle" tabindex="-1"></h1>
-<p>아직 준비 중입니다. 다음 단계에서 기능을 추가할 예정입니다.</p>
+<p id="studentInfo"></p><p>퀴즈 풀이 화면은 다음 단계에서 추가할 예정입니다.</p>
 <button class="primary" id="homeButton">첫 화면으로 돌아가기</button>
 </section>
 <footer>HOME ECONOMICS · QUIZ CLASS</footer>
@@ -60,7 +72,7 @@ input { width:100%; border:1px solid #a9b9b3; border-radius:12px; padding:15px; 
 <dialog id="passwordDialog" aria-labelledby="dialogTitle">
 <form id="passwordForm">
 <h2 id="dialogTitle">🔐 관리자 입장</h2>
-<p>관리자 비밀번호를 입력해 주세요.</p>
+<p id="passwordHint">관리자 비밀번호를 입력해 주세요.</p>
 <label for="password">비밀번호</label>
 <input id="password" type="password" inputmode="numeric" autocomplete="off" placeholder="비밀번호 입력" required>
 <p id="error" role="alert"></p>
@@ -68,41 +80,32 @@ input { width:100%; border:1px solid #a9b9b3; border-radius:12px; padding:15px; 
 </form>
 </dialog>
 <script>
-const ADMIN_PASSWORD = '4321';
-const $ = id => document.getElementById(id);
-const dialog = $('passwordDialog');
-function showMode(mode) {
-  $('home').hidden = true;
-  $('welcome').hidden = false;
-  $('welcomeIcon').textContent = mode === 'admin' ? '👩‍🏫' : '🎮';
-  $('welcomeTitle').textContent = mode === 'admin' ? '관리자 모드' : '학생 모드';
-  $('welcomeTitle').focus();
-}
-$('adminButton').addEventListener('click', () => {
-  $('passwordForm').reset();
-  $('error').textContent = '';
-  dialog.showModal();
-  $('password').focus();
-});
-$('passwordForm').addEventListener('submit', event => {
-  event.preventDefault();
-  if ($('password').value === ADMIN_PASSWORD) {
-    dialog.close();
-    $('passwordForm').reset();
-    showMode('admin');
-  } else {
-    $('error').textContent = '비밀번호가 일치하지 않습니다. 다시 입력해 주세요.';
-    $('password').select();
-  }
-});
-$('password').addEventListener('input', () => $('error').textContent = '');
-$('cancelButton').addEventListener('click', () => dialog.close());
-$('studentButton').addEventListener('click', () => showMode('student'));
-$('homeButton').addEventListener('click', () => {
-  $('welcome').hidden = true;
-  $('home').hidden = false;
-  $('adminButton').focus();
-});
-</script>
-</body>
-</html>
+const ADMIN_PASSWORD='4321', $=id=>document.getElementById(id), dialog=$('passwordDialog');
+const KEY='homeQuizV2';
+let saved={studentPass:'',questions:[]};
+try { const data=JSON.parse(localStorage.getItem(KEY)); if(data && Array.isArray(data.questions)) saved=data; } catch(e){}
+let draft=[], mode='admin', dirty=false;
+function persist(next){try{localStorage.setItem(KEY,JSON.stringify(next));saved=next;return true;}catch(e){return false;}}
+function show(section){for(const id of ['home','editor','welcome']) $(id).hidden=id!==section;document.querySelector('main').classList.toggle('editing',section==='editor');window.scrollTo(0,0);}
+function openGate(next){mode=next;$('passwordForm').reset();$('error').textContent='';$('dialogTitle').textContent=next==='admin'?'🔐 관리자 입장':'🔐 학생 입장';$('passwordHint').textContent=next==='admin'?'관리자 비밀번호를 입력해 주세요.':'선생님이 안내한 비밀번호를 입력해 주세요.';if(next==='student'&&!saved.studentPass)$('error').textContent='아직 선생님이 비밀번호를 설정하지 않았습니다.';dialog.showModal();$('password').focus();}
+$('password').removeAttribute('inputmode');
+$('adminButton').onclick=()=>openGate('admin');$('studentButton').onclick=()=>openGate('student');$('cancelButton').onclick=()=>dialog.close();$('password').oninput=()=>$('error').textContent='';
+$('passwordForm').onsubmit=e=>{e.preventDefault();if(mode==='student'&&!saved.studentPass){$('error').textContent='학생용 비밀번호가 아직 설정되지 않았습니다.';return;}if($('password').value!==(mode==='admin'?ADMIN_PASSWORD:saved.studentPass)){$('error').textContent='비밀번호가 일치하지 않습니다.';return;}dialog.close();$('passwordForm').reset();if(mode==='admin'){draft=JSON.parse(JSON.stringify(saved.questions));dirty=false;$('studentPass').value=saved.studentPass;$('passStatus').textContent='';$('saveStatus').textContent='';render();show('editor');}else{$('welcomeIcon').textContent='🎮';$('welcomeTitle').textContent='학생 모드';$('studentInfo').textContent=`등록된 문제 ${saved.questions.length}개 · 입장 성공!`;show('welcome');}};
+$('homeButton').onclick=()=>show('home');$('adminHome').onclick=()=>{if(!dirty||confirm('저장하지 않은 문제 변경사항이 있습니다. 나갈까요?'))show('home');};
+$('savePass').onclick=()=>{const v=$('studentPass').value.trim();if(!v){$('passStatus').textContent='비밀번호를 입력해 주세요.';return;} $('passStatus').textContent=persist({...saved,studentPass:v})?'학생용 비밀번호가 저장되었습니다.':'저장 실패: 브라우저 저장소를 확인하세요.';};
+const types={single:'객관식 (정답 1개)',short:'단답형 (복수 인정답 가능)',multi:'다지선다 (복수 선택)',ox:'OX 문제'};
+function fresh(type='single',text=''){return {type,text,options:type==='ox'?['O','X']:type==='short'?[]:['','','',''],correct:[],answers:type==='short'?['']:[]};}
+function changed(){dirty=true;$('saveStatus').textContent='저장되지 않은 변경사항이 있습니다.';}
+function el(tag,txt,cls){const n=document.createElement(tag);if(txt!==undefined)n.textContent=txt;if(cls)n.className=cls;return n;}
+function btn(txt,fn,cls='secondary'){const n=el('button',txt,cls);n.type='button';n.onclick=fn;return n;}
+function field(value,placeholder,fn){const n=el('input');n.type='text';n.value=value;n.placeholder=placeholder;n.oninput=()=>{fn(n.value);changed();};return n;}
+function render(){const root=$('questions');root.replaceChildren();$('count').textContent=`(${draft.length}/30)`;for(const id of ['addQuestion','addBottom'])$(id).disabled=draft.length>=30;
+if(!draft.length)root.append(el('p','아직 등록된 문제가 없습니다. + 문제 추가를 눌러 주세요.','muted'));
+draft.forEach((q,i)=>{const card=el('div',undefined,'panel'),head=el('div',undefined,'toolbar');head.append(el('h3',`문제 ${i+1}`),btn('삭제',()=>{if(confirm(`${i+1}번 문제를 삭제할까요?`)){draft.splice(i,1);changed();render();}},'danger'));card.append(head,el('label','문제 유형'));const select=el('select');for(const [v,t] of Object.entries(types)){const o=el('option',t);o.value=v;select.append(o);}select.value=q.type;select.onchange=()=>{draft[i]=fresh(select.value,q.text);changed();render();};card.append(select,el('label','문제 내용'));const ta=el('textarea');ta.value=q.text;ta.placeholder='문제를 입력하세요.';ta.oninput=()=>{q.text=ta.value;changed();};card.append(ta);
+if(q.type==='short'){card.append(el('label','인정 정답 (하나라도 일치하면 정답)'));q.answers.forEach((v,j)=>{const row=el('div',undefined,'answer-row');row.append(field(v,`인정 정답 ${j+1}`,x=>q.answers[j]=x),btn('삭제',()=>{q.answers.splice(j,1);changed();render();}));card.append(row);});card.append(btn('+ 인정 정답 추가',()=>{q.answers.push('');changed();render();}));}
+else{card.append(el('label',q.type==='multi'?'보기 및 정답 선택 (복수 선택 가능)':'보기 및 정답 선택 (1개)'));q.options.forEach((v,j)=>{const row=el('div',undefined,'answer-row'),check=el('input');check.type=q.type==='multi'?'checkbox':'radio';check.name=`correct-${i}`;check.checked=q.correct.includes(j);check.setAttribute('aria-label',`${j+1}번 보기 정답 지정`);check.onchange=()=>{if(q.type==='multi'){q.correct=check.checked?[...q.correct,j]:q.correct.filter(x=>x!==j);}else q.correct=[j];changed();};row.append(check);if(q.type==='ox')row.append(el('strong',v));else{row.append(field(v,`보기 ${j+1}`,x=>q.options[j]=x));if(q.options.length>2)row.append(btn('삭제',()=>{q.options.splice(j,1);q.correct=q.correct.filter(x=>x!==j).map(x=>x>j?x-1:x);changed();render();}));}card.append(row);});if(q.type!=='ox')card.append(btn('+ 보기 추가',()=>{q.options.push('');changed();render();}));}root.append(card);});}
+function add(){if(draft.length>=30)return;draft.push(fresh());changed();render();$('questions').lastElementChild.scrollIntoView({block:'center',behavior:'smooth'});}
+$('addQuestion').onclick=add;$('addBottom').onclick=add;
+$('saveQuestions').onclick=()=>{for(let i=0;i<draft.length;i++){const q=draft[i];let msg='';if(!q.text.trim())msg='문제 내용을 입력하세요.';else if(q.type==='short'){if(!q.answers.length||q.answers.some(x=>!x.trim()))msg='인정 정답을 모두 입력하세요.';}else if(q.options.some(x=>!x.trim()))msg='보기를 모두 입력하세요.';else if(q.type==='multi'&&q.correct.length<2)msg='정답을 2개 이상 선택하세요.';else if(q.type!=='multi'&&q.correct.length!==1)msg='정답을 1개 선택하세요.';if(msg){$('saveStatus').textContent=`${i+1}번: ${msg}`;$('questions').children[i].scrollIntoView({block:'center'});alert(`${i+1}번: ${msg}`);return;}}if(persist({...saved,questions:JSON.parse(JSON.stringify(draft))})){dirty=false;$('saveStatus').textContent=`${draft.length}개 문제가 저장되었습니다.`;}else $('saveStatus').textContent='저장 실패: 브라우저 저장소를 확인하세요.';};
+window.addEventListener('beforeunload',e=>{if(dirty&&!$('editor').hidden){e.preventDefault();e.returnValue='';}});
+</script></body></html>
