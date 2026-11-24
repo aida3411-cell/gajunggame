@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>가정퀴즈로 정복하기</title>
+<style>
+* { box-sizing: border-box; }
+body { margin:0; min-height:100vh; min-height:100dvh; display:grid; place-items:center; padding:24px; font-family: system-ui, 'Malgun Gothic', sans-serif; color:#243b37; background:linear-gradient(145deg,#e1f5e8,#fff5db 65%,#e2efff); }
+main { width:min(100%,680px); text-align:center; padding:clamp(24px,6vw,54px); background:#ffffffed; border-radius:32px; box-shadow:0 18px 60px #31594a18; }
+.illustration { font-size:clamp(34px,8vw,58px); letter-spacing:5px; margin-bottom:24px; }
+h1 { font-size:clamp(27px,6vw,46px); letter-spacing:-.06em; margin:0 0 16px; color:#205c48; word-break:keep-all; }
+p { line-height:1.7; color:#526660; word-break:keep-all; }
+.choices { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:36px; }
+button { font:inherit; cursor:pointer; border:0; border-radius:18px; padding:16px; min-height:52px; font-weight:700; transition:transform .15s, background .15s; }
+button:active { transform:scale(.98); }
+button:focus-visible,input:focus-visible { outline:3px solid #e49a36; outline-offset:4px; }
+.choice { display:grid; gap:8px; justify-items:center; padding:24px 12px; font-size:22px; }
+.choice span { font-size:42px; }
+.choice small { font-size:14px; font-weight:500; }
+.admin { background:#e5edff; color:#304e95; }
+.student { background:#d9f3df; color:#205c48; }
+.admin:hover { background:#d5e2ff; }
+.student:hover { background:#c5ebcf; }
+footer { margin-top:30px; font-size:13px; color:#687b74; }
+dialog { width:min(420px,calc(100% - 32px)); border:0; border-radius:24px; padding:28px; color:#243b37; box-shadow:0 20px 70px #0003; }
+dialog::backdrop { background:#203d3966; backdrop-filter:blur(4px); }
+dialog h2 { margin-top:0; }
+label { display:block; font-weight:700; margin:16px 0 8px; }
+input { width:100%; border:1px solid #a9b9b3; border-radius:12px; padding:15px; font-size:18px; }
+.actions { display:flex; gap:10px; margin-top:16px; }
+.actions button { flex:1; }
+.primary { background:#205c48; color:white; }
+.secondary { background:#edf1ef; color:#243b37; }
+#error { color:#b42318; min-height:24px; font-size:14px; margin:8px 0; }
+[hidden] { display:none !important; }
+@media(max-width:480px) { .choices { grid-template-columns:1fr; gap:12px; margin-top:24px; } .choice { padding:18px; } .choice span { font-size:32px; } }
+@media(prefers-reduced-motion:reduce) { button { transition:none; } }
+</style>
+</head>
+<body>
+<main>
+<section id="home">
+<div class="illustration" aria-hidden="true">👕 🍎 🏠 📚</div>
+<h1>가정퀴즈로 정복하기</h1>
+<p>퀴즈로 배우는 가정 교과, 즐겁게 도전하고 실력을 키워요!</p>
+<div class="choices">
+<button class="choice admin" id="adminButton"><span aria-hidden="true">👩‍🏫</span>관리자용<small>퀴즈 등록 및 관리</small></button>
+<button class="choice student" id="studentButton"><span aria-hidden="true">🎮</span>학생용<small>퀴즈 도전하기</small></button>
+</div>
+</section>
+<section id="welcome" hidden>
+<div class="illustration" aria-hidden="true" id="welcomeIcon"></div>
+<h1 id="welcomeTitle" tabindex="-1"></h1>
+<p>아직 준비 중입니다. 다음 단계에서 기능을 추가할 예정입니다.</p>
+<button class="primary" id="homeButton">첫 화면으로 돌아가기</button>
+</section>
+<footer>HOME ECONOMICS · QUIZ CLASS</footer>
+</main>
+<dialog id="passwordDialog" aria-labelledby="dialogTitle">
+<form id="passwordForm">
+<h2 id="dialogTitle">🔐 관리자 입장</h2>
+<p>관리자 비밀번호를 입력해 주세요.</p>
+<label for="password">비밀번호</label>
+<input id="password" type="password" inputmode="numeric" autocomplete="off" placeholder="비밀번호 입력" required>
+<p id="error" role="alert"></p>
+<div class="actions"><button type="button" class="secondary" id="cancelButton">취소</button><button type="submit" class="primary">입장하기</button></div>
+</form>
+</dialog>
+<script>
+const ADMIN_PASSWORD = '4321';
+const $ = id => document.getElementById(id);
+const dialog = $('passwordDialog');
+function showMode(mode) {
+  $('home').hidden = true;
+  $('welcome').hidden = false;
+  $('welcomeIcon').textContent = mode === 'admin' ? '👩‍🏫' : '🎮';
+  $('welcomeTitle').textContent = mode === 'admin' ? '관리자 모드' : '학생 모드';
+  $('welcomeTitle').focus();
+}
+$('adminButton').addEventListener('click', () => {
+  $('passwordForm').reset();
+  $('error').textContent = '';
+  dialog.showModal();
+  $('password').focus();
+});
+$('passwordForm').addEventListener('submit', event => {
+  event.preventDefault();
+  if ($('password').value === ADMIN_PASSWORD) {
+    dialog.close();
+    $('passwordForm').reset();
+    showMode('admin');
+  } else {
+    $('error').textContent = '비밀번호가 일치하지 않습니다. 다시 입력해 주세요.';
+    $('password').select();
+  }
+});
+$('password').addEventListener('input', () => $('error').textContent = '');
+$('cancelButton').addEventListener('click', () => dialog.close());
+$('studentButton').addEventListener('click', () => showMode('student'));
+$('homeButton').addEventListener('click', () => {
+  $('welcome').hidden = true;
+  $('home').hidden = false;
+  $('adminButton').focus();
+});
+</script>
+</body>
+</html>
